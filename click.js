@@ -1,20 +1,12 @@
 function click(time) {
   const [H, M, S] = time.split(':');
   const d = new Date();
-  const target = new Date(d.getFullYear(), d.getMonth(), d.getDate(), +H, +M, +S).getTime();
-  if (target <= Date.now()) { console.error('In the past'); return; }
-
-  const btn = [...document.querySelectorAll('.FlatButton__content')]
-    .find(el => el.textContent.trim() === 'Post');
-  if (!btn) { console.error('Button not found'); return; }
-
-  console.log(`[*] Click at ${time} (in ${((target - Date.now()) / 1000).toFixed(1)}s)`);
-
-  setTimeout(() => {
-    const wait = () => {
-      if (Date.now() >= target) { btn.click(); console.log(`[*] Clicked at ${new Date().toLocaleTimeString()}`); }
-      else requestAnimationFrame(wait);
-    };
-    requestAnimationFrame(wait);
-  }, target - Date.now() - 2000);
+  const t = new Date(d.getFullYear(), d.getMonth(), d.getDate(), +H, +M, +S).getTime();
+  const el = [...document.querySelectorAll('.FlatButton__content')].find(e => e.textContent.trim() === 'Post');
+  const btn = (el.closest('button,[role="button"]') || el);
+  const evt = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+  const code = `self.onmessage=e=>{const t=e.data,o=performance.timeOrigin;setTimeout(()=>{while(o+performance.now()<t){}self.postMessage(null)},Math.max(0,t-o-performance.now()-50))}`;
+  const w = new Worker(URL.createObjectURL(new Blob([code], { type: 'application/javascript' })));
+  w.onmessage = () => btn.dispatchEvent(evt);
+  w.postMessage(t - 1);
 }

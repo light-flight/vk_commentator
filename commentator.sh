@@ -29,8 +29,8 @@ openssl s_client -connect api.vk.com:443 -servername api.vk.com -quiet 2>/dev/nu
 exec 3>"$PIPE"; sleep 0.5
 echo "[*] TLS ready"
 
-while (( $(date +%s) < TS )); do :; done
+perl -MTime::HiRes -e 'Time::HiRes::sleep('$TS' - Time::HiRes::time())'
 
 printf '%s' "$REQ" >&3; exec 3>&-
-echo "[*] Sent at $(date +%H:%M:%S)"
+echo "[*] Sent"
 wait 2>/dev/null
