@@ -31,20 +31,18 @@ end
 def parse_args!
   if ARGV.length < 2
     warn <<~USAGE
-      Usage: ruby commentator.rb <message> <target_time>
+      Usage: ruby commentator.rb <message> <time>
 
       Arguments:
-        message      — comment text
-        target_time  — ISO 8601 timestamp, e.g. "2026-03-20T15:00:00+03:00"
-                        or "now" to post immediately
+        message  — comment text
+        time     — "DD.MM.YY HH:MM:SS", e.g. "19.03.26 19:20:00"
 
       Environment (.env):
-        VK_TOKEN     — access token (get one at https://vkhost.github.io)
-        TOPIC_URL    — VK topic URL, e.g. "https://vk.com/topic-236828482_56563978"
+        VK_TOKEN  — access token (get one at https://vkhost.github.io)
+        TOPIC_URL — VK topic URL, e.g. "https://vk.com/topic-236828482_56563978"
 
-      Examples:
-        ruby commentator.rb "Hello!" now
-        ruby commentator.rb "First!" "2026-03-20T15:00:00+03:00"
+      Example:
+        ruby commentator.rb 'Hello!' '19.03.26 19:20:00'
     USAGE
     exit 1
   end
@@ -59,7 +57,7 @@ def parse_args!
   abort "Error: invalid TOPIC_URL. Expected format: https://vk.com/topic-GROUP_ID_TOPIC_ID" unless match
 
   message     = ARGV[0]
-  target_time = ARGV[1].downcase == 'now' ? Time.now : Time.parse(ARGV[1])
+  target_time = Time.strptime(ARGV[1], '%d.%m.%y %H:%M:%S')
 
   abort "Error: target time #{target_time} is in the past." if target_time < Time.now - 1
 
