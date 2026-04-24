@@ -7,6 +7,7 @@
 ```
 commentator.rb        основной скрипт (Ruby, VK API)
 check_timestamp.rb    проверка server-side таймстемпа комментария
+scripts/run_remote.sh обёртка: одной локальной командой стартует всё в tmux на VPS
 .env                  VK_TOKEN
 js/click*.js          DevTools fallback
 bash/commentator.sh   fallback на raw TLS-сокете (1 сообщение)
@@ -59,18 +60,50 @@ ruby commentator.rb \
 
 Для ping 5-15 мс до VK вместо 50-150 — VPS в МСК/СПб (Selectel/Timeweb, ~150 ₽/мес).
 
+**Один раз** — подготовить VPS:
+
 ```bash
 ssh user@vps
 sudo apt install -y ruby git tmux
-git clone <repo> vk_commentator && cd vk_commentator
-echo 'VK_TOKEN=vk1.a.XXXXX' > .env && chmod 600 .env
-
-tmux new -s vk
-ruby commentator.rb -u '<url>' -t '08.05.26 22:00:00' -m '...' -m '...'
-# Ctrl+b d, exit — tmux-сессия живёт сама
+git clone https://github.com/light-flight/vk_commentator.git ~/vk_commentator
+echo 'VK_TOKEN=vk1.a.XXXXX' > ~/vk_commentator/.env && chmod 600 ~/vk_commentator/.env
+exit
 ```
 
-Вернуться позже: `ssh user@vps`, `tmux attach -t vk`.
+(если репозиторий ещё не клонирован — `scripts/run_remote.sh` сам сделает `git clone`, но `.env` положить руками всё равно придётся.)
+
+### Запуск одной командой с локальной машины
+
+```bash
+scripts/run_remote.sh \
+  --host user@1.2.3.4 \
+  -u 'https://vk.com/topic-236828463_57620976' \
+  -t '08.05.26 22:00:00' \
+  -m 'Комментарий 1' -m 'Комментарий 2'
+```
+
+Скрипт:
+1. Делает `git pull` (или `clone`, если первый раз) в `~/vk_commentator` на VPS.
+2. Копирует сообщения файлом — экранирование `$`, `'`, `"`, `` ` `` и т.д. внутри текста безопасно «из коробки».
+3. Запускает `commentator.rb` в detached `tmux`-сессии (по умолчанию `vk`).
+4. Печатает первые строки лога локально — убедись, что строка `Scheduled:` показывает нужное время и `MSK`.
+
+После этого SSH-сессия и локальный терминал больше не нужны — `tmux` на VPS доживёт до момента X.
+
+Полезное:
+- `scripts/run_remote.sh -h` — все флаги (`--session`, `--force`, `--ssh-opts`, `-f messages.txt`).
+- Глянуть лог: `ssh user@1.2.3.4 -t tmux attach -t vk` (detach: `Ctrl+b d`).
+- Прибить: `ssh user@1.2.3.4 tmux kill-session -t vk`.
+
+### Ручной fallback (если wrapper недоступен)
+
+```bash
+ssh user@vps
+cd ~/vk_commentator && git pull
+tmux new -s vk
+ruby commentator.rb -u '<url>' -t '08.05.26 22:00:00' -m '...' -m '...'
+# Ctrl+b d, exit
+```
 
 ## Если что-то пошло не так
 
