@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 export $(grep -v '^#' .env | xargs)
-[[ $TOPIC_URL =~ topic-([0-9]+)_([0-9]+) ]]
-(( $# >= 2 )) || { echo "Usage: $0 msg 'DD.MM.YY HH:MM:SS'" >&2; exit 1; }
+(( $# >= 3 )) || { echo "Usage: $0 msg 'DD.MM.YY HH:MM:SS' topic_url" >&2; exit 1; }
+[[ $3 =~ topic-([0-9]+)_([0-9]+) ]] || { echo "Bad topic url: $3" >&2; exit 1; }
 TS=$(date -j -f '%d.%m.%y %H:%M:%S' "$2" +%s)
 (( TS > $(date +%s) )) || { echo "In the past" >&2; exit 1; }
 BODY="group_id=${BASH_REMATCH[1]}&topic_id=${BASH_REMATCH[2]}&message=$(printf '%s' "$1"|xxd -p|tr -d '\n'|sed 's/../%&/g')&access_token=$VK_TOKEN&v=5.199"
