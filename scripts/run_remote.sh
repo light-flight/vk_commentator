@@ -21,10 +21,13 @@ Required:
   -f, --messages-file <p>   Альтернатива -m: файл, по строке на сообщение
 
 Optional:
-  --session NAME            Имя tmux-сессии (по умолчанию: vk)
-  --force                   Если tmux-сессия с таким именем уже есть — убить её
+  --session NAME            Имя tmux-сессии (по умолчанию: vk). Если такая
+                            сессия уже есть — будет убита и пересоздана.
   --ssh-opts '...'          Доп. опции для ssh/scp (например '-i ~/.ssh/vk_vps')
   -h, --help                Показать эту справку
+
+После завершения работы commentator.rb tmux-сессия автоматически закрывается;
+полный лог запуска остаётся в ~/vk_commentator/last_run.log на VPS.
 
 Пример:
   scripts/run_remote.sh \
@@ -42,7 +45,6 @@ URL=''
 TARGET_TIME=''
 MESSAGES_FILE=''
 SESSION='vk'
-FORCE=0
 SSH_OPTS=''
 MESSAGES=()
 
@@ -54,7 +56,6 @@ while (( $# > 0 )); do
     -m|--message)       MESSAGES+=("${2:-}"); shift 2 ;;
     -f|--messages-file) MESSAGES_FILE="${2:-}"; shift 2 ;;
     --session)          SESSION="${2:-}"; shift 2 ;;
-    --force)            FORCE=1; shift ;;
     --ssh-opts)         SSH_OPTS="${2:-}"; shift 2 ;;
     -h|--help)          usage; exit 0 ;;
     *)                  echo "Unknown arg: $1" >&2; usage >&2; exit 1 ;;
@@ -100,13 +101,13 @@ echo "==> Готовим запуск на ${HOST}"
 echo "    URL:       ${URL}"
 echo "    Time:      ${TARGET_TIME} (МСК)"
 echo "    Messages:  ${#MESSAGES[@]} шт."
-echo "    Session:   ${SESSION}${FORCE:+ (force=1)}"
+echo "    Session:   ${SESSION}"
 echo
 
 echo "==> scp messages → ${HOST}:/tmp/vk_messages.txt"
 scp ${SSH_OPTS_ARR[@]+"${SSH_OPTS_ARR[@]}"} -q "$LOCAL_TMP" "${HOST}:/tmp/vk_messages.txt"
 
-REMOTE_RUBY_CMD="cd ${REMOTE_DIR} && ruby commentator.rb -u '${URL}' -t '${TARGET_TIME}' -f messages.txt"
+REMOTE_RUBY_CMD="cd ${REMOTE_DIR} && ruby commentator.rb -u '${URL}' -t '${TARGET_TIME}' -f messages.txt 2>&1 | tee last_run.log"
 
 echo "==> Bootstrap на VPS (clone/pull, .env check, tmux start)"
 ssh ${SSH_OPTS_ARR[@]+"${SSH_OPTS_ARR[@]}"} "$HOST" bash -s <<EOF
@@ -134,17 +135,12 @@ fi
 mv /tmp/vk_messages.txt ./messages.txt
 
 if tmux has-session -t ${SESSION} 2>/dev/null; then
-  if [ "${FORCE}" = "1" ]; then
-    echo "  - tmux-сессия '${SESSION}' существует → убиваю (--force)"
-    tmux kill-session -t ${SESSION}
-  else
-    echo "ERROR: tmux-сессия '${SESSION}' уже существует. Прибей вручную (tmux kill-session -t ${SESSION}) или запусти с --force." >&2
-    exit 1
-  fi
+  echo "  - tmux-сессия '${SESSION}' существует → убиваю и пересоздаю"
+  tmux kill-session -t ${SESSION}
 fi
 
 echo "  - tmux new-session -d -s ${SESSION}"
-tmux new-session -d -s ${SESSION} "${REMOTE_RUBY_CMD}; echo; echo '--- скрипт завершился, нажми Enter чтобы закрыть окно ---'; read"
+tmux new-session -d -s ${SESSION} "${REMOTE_RUBY_CMD}"
 
 sleep 2
 echo
@@ -155,13 +151,16 @@ EOF
 
 cat <<HINT
 
-==> Готово. Скрипт работает в tmux на ${HOST}.
-
-Подключиться позже и посмотреть лог:
-  ssh ${SSH_OPTS} ${HOST} -t tmux attach -t ${SESSION}
-
-Убить запуск (если что-то пошло не так):
-  ssh ${SSH_OPTS} ${HOST} tmux kill-session -t ${SESSION}
+==> Готово. Скрипт работает в tmux-сессии '${SESSION}' на ${HOST}.
 
 Проверь, что в выводе выше строка 'Scheduled:' показывает нужное время в MSK.
+
+Посмотреть live-вывод (пока работает):
+  ssh ${SSH_OPTS} ${HOST} -t tmux attach -t ${SESSION}
+
+После завершения сессия закроется сама. Полный лог запуска остаётся здесь:
+  ssh ${SSH_OPTS} ${HOST} cat ~/vk_commentator/last_run.log
+
+Принудительно прервать:
+  ssh ${SSH_OPTS} ${HOST} tmux kill-session -t ${SESSION}
 HINT

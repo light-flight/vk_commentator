@@ -85,15 +85,17 @@ scripts/run_remote.sh \
 Скрипт:
 1. Делает `git pull` (или `clone`, если первый раз) в `~/vk_commentator` на VPS.
 2. Копирует сообщения файлом — экранирование `$`, `'`, `"`, `` ` `` и т.д. внутри текста безопасно «из коробки».
-3. Запускает `commentator.rb` в detached `tmux`-сессии (по умолчанию `vk`).
-4. Печатает первые строки лога локально — убедись, что строка `Scheduled:` показывает нужное время и `MSK`.
+3. Если tmux-сессия с таким именем уже есть — убивает и пересоздаёт (повторный запуск безопасен).
+4. Запускает `commentator.rb` в detached `tmux`-сессии (по умолчанию `vk`), пишет вывод в `~/vk_commentator/last_run.log`.
+5. Печатает первые строки лога локально — убедись, что строка `Scheduled:` показывает нужное время и `MSK`.
 
-После этого SSH-сессия и локальный терминал больше не нужны — `tmux` на VPS доживёт до момента X.
+После этого SSH-сессия и локальный терминал больше не нужны — `tmux` на VPS доживёт до момента X. Когда `commentator.rb` отработает, tmux-сессия закрывается сама; полный лог остаётся в `last_run.log`.
 
 Полезное:
-- `scripts/run_remote.sh -h` — все флаги (`--session`, `--force`, `--ssh-opts`, `-f messages.txt`).
-- Глянуть лог: `ssh user@1.2.3.4 -t tmux attach -t vk` (detach: `Ctrl+b d`).
-- Прибить: `ssh user@1.2.3.4 tmux kill-session -t vk`.
+- `scripts/run_remote.sh -h` — все флаги (`--session`, `--ssh-opts`, `-f messages.txt`).
+- Live-вывод: `ssh user@1.2.3.4 -t tmux attach -t vk` (detach: `Ctrl+b d`).
+- После завершения — лог запуска: `ssh user@1.2.3.4 cat ~/vk_commentator/last_run.log`.
+- Прервать вручную: `ssh user@1.2.3.4 tmux kill-session -t vk`.
 
 ### Ручной fallback (если wrapper недоступен)
 
