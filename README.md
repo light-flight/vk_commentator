@@ -35,6 +35,8 @@ ruby commentator.rb \
 
 Альтернативы: `-f messages.txt` (по строке на сообщение), `--test` (разрешить ближайшее/прошлое время), `--dry-run` (не отправлять). Полный help: `ruby commentator.rb --help`.
 
+Время в `-t` всегда трактуется как **МСК** (`Europe/Moscow`) — независимо от системной таймзоны (важно для VPS в UTC). Переопределить можно так: `TZ='Asia/Tokyo' ruby commentator.rb ...`.
+
 ## Чек-лист на день X
 
 1. **Часы.** Mac: `sudo sntp -sS time.apple.com`. Linux: `timedatectl status` → `System clock synchronized: yes`.
@@ -50,7 +52,7 @@ ruby commentator.rb \
    ruby commentator.rb -u '<url>' -t '08.05.26 22:00:00' -m '...' -m '...'
    # detach: Ctrl+b d
    ```
-   Вернуться: `tmux attach -t vk`.
+   Вернуться: `tmux attach -t vk`. **Сразу после запуска проверить в логе**, что строка `Scheduled:` показывает `MSK` и ожидаемое локальное время — это страховка от расхождения таймзоны на VPS.
 4. **После 22:00:00** — глазами в топик + `check_timestamp.rb` для server-side таймстемпов.
 
 ## VPS (опционально)

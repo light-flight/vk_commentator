@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export $(grep -v '^#' .env | xargs)
+: "${TZ:=Europe/Moscow}"; export TZ
 (( $# >= 3 )) || { echo "Usage: $0 msg 'DD.MM.YY HH:MM:SS' topic_url" >&2; exit 1; }
 [[ $3 =~ topic-([0-9]+)_([0-9]+) ]] || { echo "Bad topic url: $3" >&2; exit 1; }
 TS=$(date -j -f '%d.%m.%y %H:%M:%S' "$2" +%s)

@@ -1,6 +1,8 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+ENV['TZ'] ||= 'Europe/Moscow'
+
 require 'net/http'
 require 'uri'
 require 'json'
@@ -9,7 +11,7 @@ require 'logger'
 require 'optparse'
 
 LOGGER = Logger.new($stdout)
-LOGGER.formatter = proc { |severity, datetime, _, msg| "#{datetime.strftime('%H:%M:%S.%L')} [#{severity}] #{msg}\n" }
+LOGGER.formatter = proc { |severity, datetime, _, msg| "#{datetime.strftime('%H:%M:%S.%L %Z')} [#{severity}] #{msg}\n" }
 
 VK_API_VERSION = '5.199'
 VK_API_HOST    = 'api.vk.com'
@@ -239,7 +241,7 @@ def run
   LOGGER.info "Target:    group_id=#{config[:group_id]} topic_id=#{config[:topic_id]}"
   LOGGER.info "Messages:  #{config[:messages].length} item(s)"
   config[:messages].each_with_index { |m, i| LOGGER.info "  [#{i}] #{m.inspect}" }
-  LOGGER.info "Scheduled: #{config[:target_time].strftime('%Y-%m-%d %H:%M:%S')}"
+  LOGGER.info "Scheduled: #{config[:target_time].strftime('%Y-%m-%d %H:%M:%S %Z')} (now: #{Time.now.strftime('%Y-%m-%d %H:%M:%S %Z')})"
   LOGGER.info "Mode:      #{mode_label(config)}"
 
   connections = pre_warm_connections(config[:messages].length)
