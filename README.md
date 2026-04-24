@@ -8,6 +8,7 @@
 commentator.rb        основной скрипт (Ruby, VK API)
 check_timestamp.rb    проверка server-side таймстемпа комментария
 scripts/run_remote.sh обёртка: одной локальной командой стартует всё в tmux на VPS
+scripts/push_env.sh   заливает локальный .env в ~/vk_commentator/.env на VPS
 .env                  VK_TOKEN
 js/click*.js          DevTools fallback
 bash/commentator.sh   fallback на raw TLS-сокете (1 сообщение)
@@ -71,6 +72,18 @@ exit
 ```
 
 (если репозиторий ещё не клонирован — `scripts/run_remote.sh` сам сделает `git clone`, но `.env` положить руками всё равно придётся.)
+
+### Залить `.env` на VPS одной локальной командой
+
+Если `.env` лежит у тебя локально, не надо ssh-иться и пересоздавать его на VPS — можно перезалить из проекта:
+
+```bash
+scripts/push_env.sh --host user@1.2.3.4
+# или с другим путём / ключом:
+scripts/push_env.sh --host user@1.2.3.4 -f .env.prod --ssh-opts '-i ~/.ssh/vk_vps'
+```
+
+Скрипт делает `mkdir -p ~/vk_commentator` (на случай первого раза до `git clone`), кладёт файл как `~/vk_commentator/.env` и сразу выставляет `chmod 600`. Полезно при ротации токена.
 
 ### Запуск одной командой с локальной машины
 
