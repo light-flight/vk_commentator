@@ -145,9 +145,11 @@ tmux new-session -d -s ${SESSION} "${REMOTE_RUBY_CMD}"
 sleep 2
 echo
 echo "--- tmux pane (${SESSION}) ---"
-tmux capture-pane -t ${SESSION} -p
+tmux capture-pane -t ${SESSION} -p | awk '/./{n=NR} {a[NR]=\$0} END{for(i=1;i<=n;i++) print a[i]}'
 echo "--- /tmux pane ---"
 EOF
+
+SSH_HINT="ssh${SSH_OPTS:+ $SSH_OPTS} ${HOST}"
 
 cat <<HINT
 
@@ -156,11 +158,11 @@ cat <<HINT
 Проверь, что в выводе выше строка 'Scheduled:' показывает нужное время в MSK.
 
 Посмотреть live-вывод (пока работает):
-  ssh ${SSH_OPTS} ${HOST} -t tmux attach -t ${SESSION}
+  ${SSH_HINT} -t tmux attach -t ${SESSION}
 
 После завершения сессия закроется сама. Полный лог запуска остаётся здесь:
-  ssh ${SSH_OPTS} ${HOST} cat ~/vk_commentator/last_run.log
+  ${SSH_HINT} cat ~/vk_commentator/last_run.log
 
 Принудительно прервать:
-  ssh ${SSH_OPTS} ${HOST} tmux kill-session -t ${SESSION}
+  ${SSH_HINT} tmux kill-session -t ${SESSION}
 HINT

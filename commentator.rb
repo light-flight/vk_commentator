@@ -10,6 +10,9 @@ require 'time'
 require 'logger'
 require 'optparse'
 
+$stdout.sync = true
+$stderr.sync = true
+
 LOGGER = Logger.new($stdout)
 LOGGER.formatter = proc { |severity, datetime, _, msg| "#{datetime.strftime('%H:%M:%S.%L %Z')} [#{severity}] #{msg}\n" }
 
