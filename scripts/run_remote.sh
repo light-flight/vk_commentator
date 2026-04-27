@@ -117,14 +117,18 @@ for tool in tmux ruby git; do
   command -v "\$tool" >/dev/null 2>&1 || { echo "ERROR: '\$tool' не установлен на VPS. apt install -y ruby git tmux" >&2; exit 1; }
 done
 
-if [ -d ${REMOTE_DIR} ]; then
-  echo "  - ${REMOTE_DIR} уже есть → git pull"
+if [ -d ${REMOTE_DIR}/.git ]; then
+  echo "  - ${REMOTE_DIR}/.git уже есть → git pull"
   cd ${REMOTE_DIR}
   git pull --ff-only
 else
-  echo "  - клонирую ${REPO_URL} → ${REMOTE_DIR}"
-  git clone ${REPO_URL} ${REMOTE_DIR}
+  echo "  - bootstrap репо в ${REMOTE_DIR} (.git отсутствует)"
+  mkdir -p ${REMOTE_DIR}
   cd ${REMOTE_DIR}
+  git init -q
+  git remote add origin ${REPO_URL} 2>/dev/null || git remote set-url origin ${REPO_URL}
+  git fetch -q --depth=1 origin main
+  git checkout -f -B main origin/main
 fi
 
 if [ ! -f .env ]; then

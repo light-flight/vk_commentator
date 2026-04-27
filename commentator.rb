@@ -56,7 +56,6 @@ def build_option_parser(options)
 
     opts.separator ''
     opts.separator 'Optional:'
-    opts.on('--test', 'Allow target time in the past / near-now (skips the past-check)') { options[:test] = true }
     opts.on('--dry-run', 'Pre-warm connections and wait, but do not actually send requests') { options[:dry_run] = true }
     opts.on('-h', '--help', 'Show this help') { warn opts; exit 0 }
 
@@ -68,12 +67,12 @@ def build_option_parser(options)
     opts.separator "  ruby commentator.rb -u 'https://vk.com/topic-236828463_57620976' \\"
     opts.separator "    -t '08.05.26 22:00:00' -m 'Hello' -m 'World'"
     opts.separator ''
-    opts.separator '  ruby commentator.rb -u <url> -t <time> -f messages.txt --test'
+    opts.separator '  ruby commentator.rb -u <url> -t <time> -f messages.txt --dry-run'
   end
 end
 
 def parse_args!
-  options = { messages: [], test: false, dry_run: false }
+  options = { messages: [], dry_run: false }
   parser  = build_option_parser(options)
 
   begin
@@ -107,8 +106,8 @@ def parse_args!
       abort "Error: invalid time '#{options[:time]}'. Expected DD.MM.YY HH:MM:SS, e.g. '08.05.26 22:00:00'. (#{e.message})"
     end
 
-  if !options[:test] && target_time < Time.now - 1
-    abort "Error: target time #{target_time} is in the past. Pass --test to allow."
+  if target_time < Time.now - 1
+    abort "Error: target time #{target_time} is in the past."
   end
 
   {
@@ -117,7 +116,6 @@ def parse_args!
     messages:    options[:messages],
     target_time: target_time,
     token:       token,
-    test:        options[:test],
     dry_run:     options[:dry_run]
   }
 end
@@ -231,10 +229,7 @@ rescue JSON::ParserError => e
 end
 
 def mode_label(config)
-  flags = []
-  flags << 'TEST'    if config[:test]
-  flags << 'DRY-RUN' if config[:dry_run]
-  flags.empty? ? 'LIVE' : flags.join(' + ')
+  config[:dry_run] ? 'DRY-RUN' : 'LIVE'
 end
 
 def run
