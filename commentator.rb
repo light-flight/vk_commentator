@@ -18,7 +18,7 @@ LOGGER.formatter = proc { |severity, datetime, _, msg| "#{datetime.strftime('%H:
 
 VK_API_VERSION = '5.199'
 VK_API_HOST    = 'api.vk.com'
-VK_API_PATH    = '/method/board.createComment'
+VK_API_PATH    = '/method/wall.createComment'
 
 TOPIC_URL_RE = %r{vk\.com/topic-(\d+)_(\d+)}i
 
@@ -128,8 +128,8 @@ end
 
 def build_form_data(config, message)
   {
-    'group_id'     => config[:group_id],
-    'topic_id'     => config[:topic_id],
+    'owner_id'     => "-#{config[:group_id]}",
+    'post_id'      => config[:topic_id],
     'message'      => message,
     'access_token' => config[:token],
     'v'            => VK_API_VERSION
