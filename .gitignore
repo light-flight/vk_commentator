@@ -1,3 +1,4 @@
 .env
 messages.txt
 last_run.log
+jobs/

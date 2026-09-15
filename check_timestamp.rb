@@ -1,84 +1,38 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'net/http'
-require 'uri'
-require 'json'
-require 'time'
+# Prints the server-side timestamp of a topic comment.
+# Usage: ruby check_timestamp.rb 'https://vk.com/topic-GROUP_TOPIC?post=N'
 
-VK_API_VERSION = '5.199'
+require_relative 'lib/vk_commentator'
 
-TOPIC_COMMENT_RE = %r{vk\.com/topic-(\d+)_(\d+)\?post=(\d+)}i
+VkCommentator::Env.load!
 
-def load_env!
-  env_path = File.join(__dir__, '.env')
-  return unless File.exist?(env_path)
-
-  File.foreach(env_path) do |line|
-    line.strip!
-    next if line.empty? || line.start_with?('#')
-
-    key, value = line.split('=', 2)
-    ENV[key.strip] ||= value.strip if key && value
-  end
-end
-
-def vk_http
-  http = Net::HTTP.new('api.vk.com', 443)
-  http.use_ssl = true
-  cert_store = OpenSSL::X509::Store.new
-  cert_store.set_default_paths
-  cert_store.flags = OpenSSL::X509::V_FLAG_NO_CHECK_TIME
-  http.cert_store = cert_store
-  http
-end
-
-def fetch_comment(group_id:, topic_id:, comment_id:, token:)
-  uri = URI('https://api.vk.com/method/board.getComments')
-  params = {
-    'group_id'         => group_id,
-    'topic_id'         => topic_id,
-    'start_comment_id' => comment_id,
-    'count'            => '1',
-    'access_token'     => token,
-    'v'                => VK_API_VERSION
-  }
-  uri.query = URI.encode_www_form(params)
-
-  response = vk_http.request(Net::HTTP::Get.new(uri))
-  result = JSON.parse(response.body)
-
-  if result['error']
-    abort "VK API Error: #{result['error']['error_msg']} (code: #{result['error']['error_code']})"
-  end
-
-  items = result.dig('response', 'items') || []
-  comment = items.find { |c| c['id'].to_s == comment_id.to_s }
-  abort "Comment ##{comment_id} not found." unless comment
-
-  comment
-end
-
-load_env!
-
-url = ARGV[0] || "#{ENV['TOPIC_URL']}?post=17"
-match = url.match(TOPIC_COMMENT_RE)
-abort "Error: invalid URL. Expected: https://vk.com/topic-GROUP_TOPIC?post=N" unless match
-
-group_id, topic_id, comment_id = match[1], match[2], match[3]
+url = ARGV[0] or abort 'Usage: ruby check_timestamp.rb "https://vk.com/topic-GROUP_TOPIC?post=N"'
 token = ENV['VK_TOKEN']
-abort 'Error: VK_TOKEN not set. Add it to .env or export it.' unless token
+abort 'Error: VK_TOKEN not set. Add it to .env or export it.' if token.nil? || token.empty?
+
+begin
+  group_id, topic_id, comment_id = VkCommentator::Config.parse_comment_url(url)
+rescue VkCommentator::Config::InvalidError => e
+  abort "Error: #{e.message}"
+end
 
 puts "Fetching comment ##{comment_id} from topic-#{group_id}_#{topic_id}..."
 
-comment = fetch_comment(group_id:, topic_id:, comment_id:, token:)
-timestamp = comment['date']
-time = Time.at(timestamp)
+begin
+  comment = VkCommentator::VkClient.new(token: token)
+                                   .topic_comment(group_id: group_id, topic_id: topic_id, comment_id: comment_id)
+rescue VkCommentator::Error => e
+  abort "Error: #{e.message}"
+end
+abort "Comment ##{comment_id} not found." unless comment
 
+time = Time.at(comment['date'])
 puts
 puts "Comment ##{comment_id}"
 puts "  Author ID: #{comment['from_id']}"
 puts "  Text:      #{comment['text']}"
-puts "  Unix:      #{timestamp}"
-puts "  UTC:       #{time.utc.strftime('%Y-%m-%d %H:%M:%S.%L UTC')}"
-puts "  Local:     #{time.strftime('%Y-%m-%d %H:%M:%S.%L %Z')}"
+puts "  Unix:      #{comment['date']}"
+puts "  UTC:       #{time.utc.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+puts "  Local:     #{time.strftime('%Y-%m-%d %H:%M:%S %Z')}"
