@@ -20,8 +20,9 @@ module VkCommentator
       '2274003' => 'VKAndroidApp/8.60-16700 (Android 12; SDK 31; arm64-v8a; Xiaomi M2101K6G; ru; 2400x1080)'
     }.freeze
 
+    # nil for client_ids we do not know a UA for (header is then left default).
     def self.user_agent
-      USER_AGENTS.fetch(ENV.fetch('VK_CLIENT_ID', '2685278'), USER_AGENTS['2685278'])
+      USER_AGENTS[ENV.fetch('VK_CLIENT_ID', '2685278')]
     end
 
     class ApiError < Error
@@ -70,7 +71,7 @@ module VkCommentator
 
     def build_request(method, params)
       request = Net::HTTP::Post.new("/method/#{method}")
-      request['User-Agent'] = self.class.user_agent
+      request['User-Agent'] = self.class.user_agent if self.class.user_agent
       request.set_form_data(params.merge('access_token' => token, 'v' => VERSION))
       request
     end
