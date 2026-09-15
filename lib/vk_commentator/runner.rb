@@ -8,7 +8,7 @@ module VkCommentator
   # fires all comments with lead compensation, verifies server-side timestamps
   # and writes a structured result file.
   class Runner
-    RTT_SAMPLES  = 5
+    RTT_SAMPLES  = 3
     VERIFY_DELAY = 1.5 # seconds to wait before asking VK for the comment's date
 
     Shot = Struct.new(:index, :message, :fired_at, :received_at, :comment_id, :error, keyword_init: true) do
@@ -68,7 +68,10 @@ module VkCommentator
 
     # Median RTT across all connections (seconds). Also keeps the TLS sessions hot.
     def measure_rtt(connections)
-      rtts = connections.map { |http| client.measure_rtt(http, samples: RTT_SAMPLES) }
+      rtts = connections.each_with_index.map do |http, i|
+        sleep VkClient::RATE_GAP if i.positive? # stay under VK's ~3 req/s per token
+        client.measure_rtt(http, samples: RTT_SAMPLES)
+      end
       rtt  = rtts.sort[rtts.length / 2]
       logger.info "RTT:       #{(rtt * 1000).round(1)}ms (median of #{RTT_SAMPLES} samples x #{connections.length} conn)"
       rtt

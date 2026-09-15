@@ -68,22 +68,28 @@ module VkCommentator
     def call(method, params = {}, http: nil)
       request  = build_request(method, params)
       response = http ? http.request(request) : self.class.open_connection.request(request)
-      self.class.parse_response(response)
+      self.class.parse_response(response, method: method)
     end
 
-    def self.parse_response(response)
+    def self.parse_response(response, method: nil)
       body = JSON.parse(response.body)
-      raise ApiError.new(body['error']['error_code'], body['error']['error_msg']) if body['error']
+      if body['error']
+        raise ApiError.new(body['error']['error_code'], "#{body['error']['error_msg']}#{method ? " (#{method})" : ''}")
+      end
 
       body['response']
     rescue JSON::ParserError => e
       raise Error, "unparseable VK response: #{e.message}; body=#{response.body.to_s[0, 200].inspect}"
     end
 
+    # VK allows ~3 requests/s per user token; faster bursts get error 6/9.
+    RATE_GAP = 0.4
+
     # Round-trip time (seconds) of a lightweight API call on this connection.
     # Uses the median of several samples to smooth out jitter.
-    def measure_rtt(http, samples: 5)
-      rtts = Array.new(samples) do
+    def measure_rtt(http, samples: 3)
+      rtts = Array.new(samples) do |i|
+        sleep RATE_GAP if i.positive?
         started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         call('utils.getServerTime', {}, http: http)
         Process.clock_gettime(Process::CLOCK_MONOTONIC) - started

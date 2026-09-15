@@ -13,7 +13,7 @@ module VkCommentator
       'new'    => 'Запланировать комментарии',
       'list'   => 'Список заданий',
       'cancel' => 'Отменить задание: /cancel <id>',
-      'dryrun' => 'Холостой прогон задания через 45с: /dryrun <id>',
+      'dryrun' => 'Холостой прогон задания через 60с: /dryrun <id>',
       'log'    => 'Лог задания: /log <id>',
       'status' => 'Часы, NTP, пинг до VK, токен',
       'lead'   => 'Упреждение по умолчанию: /lead <ms>',
@@ -22,7 +22,7 @@ module VkCommentator
       'help'   => 'Справка'
     }.freeze
 
-    DRYRUN_DELAY = 45 # seconds; must exceed Scheduler::PREWARM_SLACK
+    DRYRUN_DELAY = 60 # seconds; must exceed Scheduler::PREWARM_SLACK
 
     E = Telegram.method(:escape)
 
@@ -405,15 +405,24 @@ module VkCommentator
     def vk_client = VkClient.new(token: Env.read.fetch('VK_TOKEN', ENV['VK_TOKEN'].to_s))
 
     def vk_status
-      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      http    = VkClient.open_connection
-      client  = vk_client
-      user    = client.whoami
-      rtt     = client.measure_rtt(http, samples: 3)
-      http.finish
-      tls_ms  = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - started) * 1000).round
-      "VK: токен ок (#{E[user['first_name']]} #{E[user['last_name']]}), RTT #{(rtt * 1000).round(1)}ms, " \
-        "handshake+3 вызова #{tls_ms}ms"
+      client = vk_client
+      http   = VkClient.open_connection
+      token_line =
+        begin
+          user = client.call('users.get', {}, http: http).first
+          "VK токен: ок (#{E[user['first_name']]} #{E[user['last_name']]}, id#{user['id']})"
+        rescue StandardError => e
+          "VK токен: ❌ #{E[e.message]}"
+        end
+      sleep VkClient::RATE_GAP
+      rtt_line =
+        begin
+          "VK RTT: #{(client.measure_rtt(http, samples: 3) * 1000).round(1)}ms"
+        rescue StandardError => e
+          "VK RTT: ❌ #{E[e.message]}"
+        end
+      http.finish rescue nil
+      "#{token_line}\n#{rtt_line}"
     rescue StandardError => e
       "VK: ❌ #{E[e.message]}"
     end

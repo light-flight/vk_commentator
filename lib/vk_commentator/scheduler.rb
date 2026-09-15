@@ -4,7 +4,7 @@ module VkCommentator
   # Two-phase waiting: coarse sleep in short chunks (robust to long waits and
   # clock adjustments), then a tight busy-wait for the last moments.
   module Scheduler
-    PREWARM_SLACK = 15.0 # seconds before target when connections are opened
+    PREWARM_SLACK = 30.0 # seconds before target when connections are opened (RTT probing is rate-limited)
     BUSY_SLACK    = 5.0  # seconds before fire time when busy-wait begins
     CHUNK         = 60.0 # max single sleep() duration
 
