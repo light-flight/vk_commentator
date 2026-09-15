@@ -12,6 +12,9 @@ module VkCommentator
     HOST    = 'api.vk.com'
     PORT    = 443
     VERSION = '5.199'
+    # Tokens are issued via Kate Mobile's client_id (2685278); present a matching
+    # client so antifraud sees a consistent app/UA pair instead of a bare Ruby UA.
+    USER_AGENT = 'KateMobileAndroid/109 lite-550 (Android 12; SDK 31; arm64-v8a; Xiaomi M2101K6G; ru)'
 
     class ApiError < Error
       attr_reader :code
@@ -59,6 +62,7 @@ module VkCommentator
 
     def build_request(method, params)
       request = Net::HTTP::Post.new("/method/#{method}")
+      request['User-Agent'] = USER_AGENT
       request.set_form_data(params.merge('access_token' => token, 'v' => VERSION))
       request
     end
@@ -123,8 +127,17 @@ module VkCommentator
       Time.at(call('utils.getServerTime').to_i)
     end
 
-    def whoami
-      call('users.get').first
+    # users.get + a second user-bound call: a frozen account answers users.get with
+    # a misleading "Flood control" while groups.get says "user is blocked" outright.
+    def whoami(http: nil)
+      user = call('users.get', {}, http: http).first
+      sleep RATE_GAP
+      call('groups.get', { 'count' => '1' }, http: http)
+      user
+    rescue ApiError => e
+      raise ApiError.new(e.code, 'аккаунт заморожен VK — разморозь на vk.com и перевыпусти токен') if e.message =~ /blocked|Flood control/i
+
+      raise
     end
 
     private

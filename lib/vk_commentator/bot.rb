@@ -409,7 +409,7 @@ module VkCommentator
       http   = VkClient.open_connection
       token_line =
         begin
-          user = client.call('users.get', {}, http: http).first
+          user = client.whoami(http: http)
           "VK токен: ок (#{E[user['first_name']]} #{E[user['last_name']]}, id#{user['id']})"
         rescue StandardError => e
           "VK токен: ❌ #{E[e.message]}"
