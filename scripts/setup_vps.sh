@@ -55,7 +55,7 @@ SUDO=''
 echo "  - apt: ruby git chrony"
 # update может падать из-за чужих битых репозиториев (speedtest-cli и т.п.) — не фатально
 \$SUDO apt-get update -qq 2>&1 | grep -v '^E: The repository' || true
-\$SUDO DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ruby git chrony >/dev/null
+\$SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ruby git chrony >/dev/null
 \$SUDO systemctl enable --now chrony >/dev/null 2>&1 || \$SUDO systemctl enable --now chronyd >/dev/null 2>&1 || true
 \$SUDO timedatectl set-timezone Europe/Moscow 2>/dev/null || true
 
