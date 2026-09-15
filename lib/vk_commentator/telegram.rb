@@ -38,7 +38,7 @@ module VkCommentator
     end
 
     def delete_message(chat_id, message_id)
-      call('deleteMessage', 'chat_id' => chat_id, 'message_id' => message_id)
+      call('deleteMessage', { 'chat_id' => chat_id, 'message_id' => message_id })
     rescue ApiError
       false
     end
@@ -52,7 +52,7 @@ module VkCommentator
     end
 
     def set_my_commands(commands)
-      call('setMyCommands', 'commands' => commands.map { |c, d| { 'command' => c, 'description' => d } }.to_json)
+      call('setMyCommands', { 'commands' => commands.map { |c, d| { 'command' => c, 'description' => d } }.to_json })
     end
 
     def self.escape(text)
