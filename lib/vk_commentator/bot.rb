@@ -297,7 +297,7 @@ module VkCommentator
       lines = ["Время VPS: <b>#{Time.now.strftime('%d.%m.%y %H:%M:%S %Z')}</b>"]
       lines << "NTP: #{E[ntp_status]}"
       lines << vk_status
-      lines << "lead_ms по умолчанию: #{default_lead_ms}, метод: #{default_method}"
+      lines << "lead_ms по умолчанию: #{default_lead_ms}, метод: #{default_method}, client_id: #{ENV.fetch('VK_CLIENT_ID', '2685278')}"
       active = @store.active
       lines << "Активных заданий: #{active.length}#{active.empty? ? '' : " (#{active.map { |j| "##{j.id}" }.join(', ')})"}"
       say(chat_id, lines.join("\n"))

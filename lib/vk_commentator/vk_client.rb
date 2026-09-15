@@ -12,9 +12,17 @@ module VkCommentator
     HOST    = 'api.vk.com'
     PORT    = 443
     VERSION = '5.199'
-    # Tokens are issued via Kate Mobile's client_id (2685278); present a matching
-    # client so antifraud sees a consistent app/UA pair instead of a bare Ruby UA.
-    USER_AGENT = 'KateMobileAndroid/109 lite-550 (Android 12; SDK 31; arm64-v8a; Xiaomi M2101K6G; ru)'
+    # Present a User-Agent matching the app whose client_id issued the token, so
+    # antifraud sees a consistent app/UA pair instead of a bare Ruby UA.
+    # Select with VK_CLIENT_ID in .env (default: Kate Mobile).
+    USER_AGENTS = {
+      '2685278' => 'KateMobileAndroid/109 lite-550 (Android 12; SDK 31; arm64-v8a; Xiaomi M2101K6G; ru)',
+      '2274003' => 'VKAndroidApp/8.60-16700 (Android 12; SDK 31; arm64-v8a; Xiaomi M2101K6G; ru; 2400x1080)'
+    }.freeze
+
+    def self.user_agent
+      USER_AGENTS.fetch(ENV.fetch('VK_CLIENT_ID', '2685278'), USER_AGENTS['2685278'])
+    end
 
     class ApiError < Error
       attr_reader :code
@@ -62,7 +70,7 @@ module VkCommentator
 
     def build_request(method, params)
       request = Net::HTTP::Post.new("/method/#{method}")
-      request['User-Agent'] = USER_AGENT
+      request['User-Agent'] = self.class.user_agent
       request.set_form_data(params.merge('access_token' => token, 'v' => VERSION))
       request
     end
@@ -135,7 +143,9 @@ module VkCommentator
       call('groups.get', { 'count' => '1' }, http: http)
       user
     rescue ApiError => e
-      raise ApiError.new(e.code, 'аккаунт заморожен VK — разморозь на vk.com и перевыпусти токен') if e.message =~ /blocked|Flood control/i
+      if e.message =~ /blocked|Flood control/i
+        raise ApiError.new(e.code, "#{e.message} — похоже на заморозку аккаунта: проверь vk.com в браузере, затем перевыпусти токен")
+      end
 
       raise
     end
